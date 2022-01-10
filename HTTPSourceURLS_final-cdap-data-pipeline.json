@@ -1,0 +1,152 @@
+{
+    "name": "HTTPSourceURLS_final",
+    "description": "Data Pipeline Application",
+    "artifact": {
+        "name": "cdap-data-pipeline",
+        "version": "6.5.1",
+        "scope": "SYSTEM"
+    },
+    "config": {
+        "stages": [
+            {
+                "name": "BigQuery",
+                "plugin": {
+                    "name": "BigQueryTable",
+                    "type": "batchsource",
+                    "label": "BigQuery",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.18.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "referenceName": "bq",
+                        "dataset": "demo_data",
+                        "table": "crypto_exchange_url_list",
+                        "enableQueryingViews": "false",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"url\",\"type\":[\"string\",\"null\"]}]}",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "filter": "where filter_ind=0"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"url\",\"type\":[\"string\",\"null\"]}]}",
+                "id": "BigQuery",
+                "type": "batchsource",
+                "label": "BigQuery",
+                "icon": "fa-plug",
+                "$$hashKey": "object:1031",
+                "isPluginAvailable": true,
+                "_uiPosition": {
+                    "left": "560px",
+                    "top": "318px"
+                }
+            },
+            {
+                "name": "Repartitioner",
+                "plugin": {
+                    "name": "Repartitioner",
+                    "type": "sparkcompute",
+                    "label": "Repartitioner",
+                    "artifact": {
+                        "name": "repartitioner",
+                        "version": "1.2.0",
+                        "scope": "USER"
+                    },
+                    "properties": {
+                        "partitions": "1",
+                        "shuffle": "false"
+                    }
+                },
+                "outputSchema": [
+                    {
+                        "name": "etlSchemaBody",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"url\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "inputSchema": [
+                    {
+                        "name": "BigQuery",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"url\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "Repartitioner",
+                "type": "sparkcompute",
+                "label": "Repartitioner",
+                "icon": "fa-plug",
+                "$$hashKey": "object:1032",
+                "isPluginAvailable": true,
+                "_uiPosition": {
+                    "left": "860px",
+                    "top": "318px"
+                }
+            },
+            {
+                "name": "File",
+                "plugin": {
+                    "name": "File",
+                    "type": "batchsink",
+                    "label": "File",
+                    "artifact": {
+                        "name": "core-plugins",
+                        "version": "2.7.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "referenceName": "file",
+                        "path": "file:///tmp/url_output",
+                        "format": "csv",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"url\",\"type\":[\"string\",\"null\"]}]}",
+                        "writeHeader": "false"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"url\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "Repartitioner",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"url\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "File",
+                "type": "batchsink",
+                "label": "File",
+                "icon": "icon-file",
+                "$$hashKey": "object:1033",
+                "isPluginAvailable": true,
+                "_uiPosition": {
+                    "left": "1160px",
+                    "top": "318px"
+                }
+            }
+        ],
+        "connections": [
+            {
+                "from": "BigQuery",
+                "to": "Repartitioner"
+            },
+            {
+                "from": "Repartitioner",
+                "to": "File"
+            }
+        ],
+        "comments": [],
+        "resources": {
+            "memoryMB": 2048,
+            "virtualCores": 1
+        },
+        "driverResources": {
+            "memoryMB": 2048,
+            "virtualCores": 1
+        },
+        "postActions": [],
+        "properties": {},
+        "processTimingEnabled": true,
+        "stageLoggingEnabled": false,
+        "description": "Data Pipeline Application",
+        "engine": "spark",
+        "schedule": "0 1 */1 * *",
+        "maxConcurrentRuns": 1
+    }
+}

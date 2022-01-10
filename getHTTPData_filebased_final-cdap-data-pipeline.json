@@ -1,0 +1,146 @@
+{
+    "name": "getHTTPData_filebased_final",
+    "description": "Data Pipeline Application",
+    "artifact": {
+        "name": "cdap-data-pipeline",
+        "version": "6.5.1",
+        "scope": "SYSTEM"
+    },
+    "config": {
+        "resources": {
+            "memoryMB": 2048,
+            "virtualCores": 1
+        },
+        "driverResources": {
+            "memoryMB": 2048,
+            "virtualCores": 1
+        },
+        "connections": [
+            {
+                "from": "HTTP",
+                "to": "BigQuery"
+            },
+            {
+                "from": "BigQuery",
+                "to": "FileDelete"
+            }
+        ],
+        "comments": [],
+        "postActions": [],
+        "properties": {},
+        "processTimingEnabled": true,
+        "stageLoggingEnabled": false,
+        "stages": [
+            {
+                "name": "HTTP",
+                "plugin": {
+                    "name": "HTTP",
+                    "type": "batchsource",
+                    "label": "HTTP",
+                    "artifact": {
+                        "name": "http-plugins",
+                        "version": "1.2.2",
+                        "scope": "USER"
+                    },
+                    "properties": {
+                        "referenceName": "GetF1",
+                        "url": "${start_url}",
+                        "httpMethod": "GET",
+                        "format": "json",
+                        "oauth2Enabled": "false",
+                        "httpErrorsHandling": "2..:Success,.*:Fail",
+                        "errorHandling": "stopOnError",
+                        "retryPolicy": "exponential",
+                        "linearRetryInterval": "30",
+                        "maxRetryDuration": "600",
+                        "connectTimeout": "120",
+                        "readTimeout": "120",
+                        "paginationType": "Custom",
+                        "verifyHttps": "false",
+                        "keystoreType": "Java KeyStore (JKS)",
+                        "keystoreKeyAlgorithm": "SunX509",
+                        "trustStoreType": "Java KeyStore (JKS)",
+                        "trustStoreKeyAlgorithm": "SunX509",
+                        "transportProtocols": "TLSv1.2",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"from\",\"type\":\"string\"},{\"name\":\"to\",\"type\":\"string\"},{\"name\":\"exchange\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"string\"}]}",
+                        "resultPath": "/tickers",
+                        "fieldsMapping": "from:/from,to:/to,exchange:/exchange,price:/price",
+                        "customPaginationCode": "import json\n\ndef get_next_page_url(url, page, headers):\n\n  url_file = open('/tmp/url_output/part-r-00000', 'r')\n  urls = [u.strip() for u in url_file.readlines()]\n  if url in urls:\n    position_index=urls.index(url)\n    if len(urls)==position_index+1:\n      return None\n    else:\n      next_url = urls[position_index+1]\n      return next_url\n  else:\n    next_url = urls[0]\n    return next_url\n"
+                    }
+                },
+                "outputSchema": [
+                    {
+                        "name": "etlSchemaBody",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"from\",\"type\":\"string\"},{\"name\":\"to\",\"type\":\"string\"},{\"name\":\"exchange\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"string\"}]}"
+                    }
+                ],
+                "id": "HTTP"
+            },
+            {
+                "name": "BigQuery",
+                "plugin": {
+                    "name": "BigQueryTable",
+                    "type": "batchsink",
+                    "label": "BigQuery",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.18.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "referenceName": "BQ",
+                        "project": "auto-detect",
+                        "dataset": "demo_data",
+                        "table": "f123_table",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "operation": "insert",
+                        "truncateTable": "true",
+                        "allowSchemaRelaxation": "false",
+                        "location": "US",
+                        "createPartitionedTable": "false",
+                        "partitioningType": "NONE",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"from\",\"type\":\"string\"},{\"name\":\"to\",\"type\":\"string\"},{\"name\":\"exchange\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"string\"}]}"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"from\",\"type\":\"string\"},{\"name\":\"to\",\"type\":\"string\"},{\"name\":\"exchange\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"string\"}]}",
+                "inputSchema": [
+                    {
+                        "name": "HTTP",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"from\",\"type\":\"string\"},{\"name\":\"to\",\"type\":\"string\"},{\"name\":\"exchange\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"string\"}]}"
+                    }
+                ],
+                "id": "BigQuery"
+            },
+            {
+                "name": "FileDelete",
+                "plugin": {
+                    "name": "FileDelete",
+                    "type": "action",
+                    "label": "FileDelete",
+                    "artifact": {
+                        "name": "core-plugins",
+                        "version": "2.7.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "path": "/tmp/url_output/part-r-00000",
+                        "continueOnError": "false"
+                    }
+                },
+                "outputSchema": [
+                    {
+                        "name": "etlSchemaBody",
+                        "schema": ""
+                    }
+                ],
+                "id": "FileDelete"
+            }
+        ],
+        "schedule": "0 1 */1 * *",
+        "engine": "spark",
+        "numOfRecordsPreview": 100,
+        "description": "Data Pipeline Application",
+        "maxConcurrentRuns": 1
+    }
+}
